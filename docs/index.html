@@ -1,6 +1,8 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML' async></script>
+</head>
 <style>
   body {
     padding: 100px;
@@ -25,66 +27,255 @@
 
 <h1 align="middle">CS 184: Computer Graphics and Imaging, Spring 2019</h1>
 <h1 align="middle">Project 1: Rasterizer</h1>
-<h2 align="middle">YOUR NAME, CS184-??</h2>
+<h2 align="middle">Jiehan Wang, CS184-aee</h2>
 
 <br><br>
 
 <div>
 
 <h2 align="middle">Overview</h2>
-<p>Give a high-level overview of what you implemented in this project. Think about what you've built as a whole. Share your thoughts on what interesting things you've learned from completing the project.</p>
+<p>In this homework, we implement a rasterizer that supports rasterization of images, image transform using matrices and texture sampling using different techniques. I found it interesting on how you debug the graphics by simply looking at the image
+  you generated and see what's going wrong.</p>
 
 <h2 align="middle">Section I: Rasterization</h2>
 
 <h3 align="middle">Part 1: Rasterizing single-color triangles</h3>
 
-<p>Here is an example 2x2 gridlike structure using an HTML table. Each <b>tr</b> is a row and each <b>td</b> is a column in that row. You might find this useful for framing and showing your result images in an organized fashion.</p>
-
-<div align="middle">
-  <table style="width=100%">
-    <tr>
-      <td>
-        <img src="images/image1.png" align="middle" width="400px"/>
-        <figcaption align="middle">Caption goes here.</figcaption>
-      </td>
-      <td>
-        <img src="images/image2.png" align="middle" width="400px"/>
-        <figcaption align="middle">Caption goes here.</figcaption>
-      </td>
-    </tr>
-    <br>
-    <tr>
-      <td>
-        <img src="images/image3.png" align="middle" width="400px"/>
-        <figcaption align="middle">Caption goes here.</figcaption>
-      </td>
-      <td>
-        <img src="images/image4.png" align="middle" width="400px"/>
-        <figcaption align="middle">Caption goes here.</figcaption>
-      </td>
-    </tr>
-  </table>
-</div>
+  <p>1. First, I bound box the triangle so that I only need to sample through all the points inside the bound box to make fewer sampling works.Then I wrote a function
+    called line\((x_0, y_0, x_1, y_1, sx, sy)\) and implementing the line test algorithm mentioned in class to check whether the sample points \((sx, sy)\) is inside the line.
+    I do this for the three edges of the triangle to determine whether sx, sy is inside the triangle, both in clockwise and counterclockwise direction.</p>
+  <p>The line test algorithm is this: \(dX = x_1- x_0\), \(dY = y_1 - y_0\), line\((x_0, y_0, x_1, y_1, sx, sy)\) = \(-(sx - x_0)dY
+  + (sy - y_0)dX\). At first I forgot to implement the line test for triangle in clockwise direction, so some of the
+  sample points which are in the triangle are not sampled.</p>
+  <p>2. The algorithm is the same of checking each sample within the bounding box of the triangle, so the runtime is the same.</p>
+  <p>3. Here is the picture of <i>basic/test4.svg</i>. Notice that there is a discontinuity on the edge of the triangle.
+  That is the aliasing because of the low sampling rate.</p>
+  <img src = "images/p1_q3.png"align="middle" width="800px"/>
 
 
 <h3 align="middle">Part 2: Antialiasing triangles</h3>
+  <p>1.	I divided each pixel into serval subpixels and do sampling on each subpixel. Then I average the color of each
+    subpixels to get the color of that big pixel, and fill in the color for each subpixel. I modified the
+    rasterize_triangle function to sample each subpixel individually, as well as the get_pixel_color to average the
+    color of each subpixels to get the color of the pixel. It is helpful because it allows you do more samples on each
+    pixel, resulting in the transition of color to make the image smoother. (for example, if you do level 4 super
+    sampling of a pixel, and 3 of its subpixels are inside the triangle, then the color of that pixel will be 75% of
+    pure red, suppose the filling color is red.)
+  </p>
+  <p>2.</p>
+
+  <div align="middle">
+    <table style="width=100%">
+      <tr>
+        <td>
+          <img src="images/p2_q2_rate1.png" align="middle" width="600px"/>
+          <figcaption align="middle">Supersample rate 1.</figcaption>
+        </td>
+        <td>
+          <img src="images/p2_q2_rate4.png" align="middle" width="600px"/>
+          <figcaption align="middle">Supersample rate 4.</figcaption>
+        </td>
+      </tr>
+      <br>
+      <tr>
+        <td>
+          <img src="images/p2_q2_rate16.png" align="middle" width="600px"/>
+          <figcaption align="middle">Supersample rate 16.</figcaption>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <p>The triangle becomes smoother as I increase the sampling rates. That’s because, for example, the discontinuity in
+    rate 1, is caused by the pixels on the edge are not sampled because the edges are too thin. This is solved by
+    super-sampling in a way that those pixels’ some subpixels are sampled to be in the triangle, and then the discontinuity
+    can be filled with color in higher sampling rates with a transition in color.
+  </p>
 
 
 
 <h3 align="middle">Part 3: Transforms</h3>
+  <p>My robot is doing a dab. I changed the color of the torso to blue and upper triangle of the head to green. Then I
+    did some rotation of my head and torso. I also did some rotation and translation to move my arms, legs, and head.
+    Notice that the rotation is different for clockwise and counterclockwise rotation, and since we're required to do
+    a counterclockwise rotation, it is important to address this point.
+  </p>
+  <img src = "images/my_robot.png"align="middle" width="800px"/>
 
 
 
 <h2 align="middle">Section II: Sampling</h2>
 
 <h3 align="middle">Part 4: Barycentric coordinates</h3>
+  <p>
+    1. Barycentric coordinate is a point's position inside a triangle relative to three vertices. For example, the
+    barycentric coordinate of point in the triangle is \(\beta /BD'\), which is the distance from that point to edge
+    \(AC\) divided by the distance from \(B\) to \(AC\). It is obvious to see that if a point is outside of a triangle,
+    then at least one of its barycentric coordinate must be negative. I use the line equation to implement this, which
+    in this picture's case, it's \(L_{AC}(sx, sy) / L_{AC}(x1, y1)\), where \(sx, sy\) are the Cartesian coordinates of
+    the sample point.
+  </p>
+  <img src = "images/bary_eg.jpeg"align="middle" width="800px"/>
 
+  <p>
+    2.
+  </p>
+  <img src = "images/bary.png"align="middle" width="800px"/>
 
 <h3 align="middle">Part 5: "Pixel sampling" for texture mapping</h3>
+<p>
+  Pixel sampling in texture is basically given a barycentric coordinate of a sample point \(p\) \((x, y)\) in the
+  surface coordinate, convert \((x, y)\) into the texture coordinate, \((u, v)\), get the corresponding color in
+  \((u, v)\) and map back to the surface.
+</p>
+  <p>
+    Implementation: 1. First, calculate the Barycentric coordinate of the sample point, given the texture triangle.
+    \((\alpha, \beta,\gamma)\). 2. Then, get the \((u, v)\) coordinate of tha sample point in the texture coordinate,
+    using the formula \(\alpha * p0_{uv} + \beta * p1_{uv} + \gamma * p2_{uv}\).
+    3.Then get the corresponding color using \((u, v)\) in the texture, and fill that color in the \((x, y)\) of the
+    triangle.
+  </p>
+  <p>
+    Oftentimes, \((u, v)\) can't fall exactly on an integer coordinate. So nearest method is finding the nearest integer
+    coordinate of \((u, v)\) and get the color there. As for bilinear method, this is a method that solve for texture
+    magnification. Bilinear method is first get the nearest four different coordinates near \((u, v)\), then using the
+    linear interpolation to average the color to get the averaged color in \((u, v)\).
+  </p>
 
+  <div align="middle">
+    <table style="width=100%">
+      <tr>
+        <td>
+          <img src="images/p5_n_rate1.png" align="middle" width="600px"/>
+          <figcaption align="middle">Supersample rate 1 using nearest neighbor.</figcaption>
+        </td>
+        <td>
+          <img src="images/p5_n_rate16.png" align="middle" width="600px"/>
+          <figcaption align="middle">Supersample rate 16 using nearest neighbor.</figcaption>
+        </td>
+      </tr>
+      <br>
+      <tr>
+        <td>
+          <img src="images/p5_b_rate1.png" align="middle" width="600px"/>
+          <figcaption align="middle">Supersample rate 1 using bilinear.</figcaption>
+        </td>
+        <td>
+          <img src="images/p5_b_rate16.png" align="middle" width="600px"/>
+          <figcaption align="middle">Supersample rate 16 using bilinear.</figcaption>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <p>
+    Basically, bilinear method has a smoother image than nearest neighbor, and the higher the sampling rate, the
+    smoother the image. When the image is magnified, bilinear generates a smoother image than nearest neighbor, because
+    bilinear tends to average the color of each neighbor, thus lower the frequency of the image.
+  </p>
 
 <h3 align="middle">Part 6: "Level sampling" with mipmaps for texture mapping</h3>
+<p>
+  Level sampling is a method that deal with minified image using mipmap. Basically, mipmaps of different levels are
+  exponentially decreasing resolution image of the original image while level is increasing. The idea is that for a
+  sample point \((x, y)\), you get its neighbor points \((x + 1, y)\) and \((x, y + 1)\), and convert them into texture
+  coordinate. \((u, v)\), \((u + 1, v)\) and \((u, v + 1)\). Then see how far away is the sample point from its
+  neighbors in the texture space. The further it from its neighbors, the higher level the mipmaps it need to use.
+</p>
+  <p>
+    Implementation: 1. calculate the barycentric coordinate of sample point \((x, y)\), and its neighbor points
+    \((x + 1, y)\) and \((x, y + 1)\).
+    2.Using their barycentric coordinates and texture coordinate of each vertices in the triangle, calculate their
+    corresponding texture coordinates \((u, v)\), \((u + 1, v)\) and \((u, v + 1)\).
+    3. get the correct level of mipmap that we want to sample on, using \((u, v)\), \((u + 1, v)\) and \((u, v + 1)\)
+    and the formula \(L = max(\sqrt{{du \over dx}^2 + {dv \over dx}^2}, \sqrt{{du \over dy}^2 + {dv \over dy}^2})\),
+    \(D = log_2{L}\), where D is the correct mipmap level.
+    4. Get the texture pixel of the corresponding \((u, v)\) using one of the sampling methods mentioned before in the
+    correct level mipmap.
+  </p>
+  <table>
+    <tr>
+      <th></th>
+      <th>Speed</th>
+      <th>Memory</th>
+      <th>Antialiasing Power</th>
+    </tr>
+    <tr>
+      <td>Nearest level<br>Nearest sampling</td>
+      <td>Medium</td>
+      <td>High</td>
+      <td>High</td>
+    </tr>
+    <tr>
+      <td>bilinear level<br>Nearest sampling</td>
+      <td>Medium</td>
+      <td>High</td>
+      <td>High</td>
+    </tr>
+    <tr>
+      <td>Nearest level<br>bilinear sampling</td>
+      <td>Slow</td>
+      <td>High</td>
+      <td>High</td>
+    </tr>
+    <tr>
+      <td>bilinear level<br>bilinear sampling</td>
+      <td>Slowest</td>
+      <td>High</td>
+      <td>Highest</td>
+    </tr>
+    <tr>
+      <td>0 level<br>Nearest sampling</td>
+      <td>Fast</td>
+      <td>Low</td>
+      <td>Low</td>
+    </tr>
+    <tr>
+      <td>0 level<br>bilinear sampling</td>
+      <td>Fast</td>
+      <td>Low</td>
+      <td>Low</td>
+    </tr>
+  </table>
+  <p>
+    1.Supersampling with higher rate always generate a smoother when other conditions are fixed.
+    2. Bilinear sampling is the best when image is zoomed in, as the reason I mentioned above.
+    3. Level sampling costs more memory because you have to store mipmaps with different levels, but it is more
+    antialiasing than 0 level sampling, which costs less memory.
+    4.Bilinear level produces less aliasing than nearest level, following the similiar reason as bilinear sampling is
+    better than nearest sampling, because it averaged out the color thus reduces the frequency.
+    5. Level sampling is the best when the image is zoomed out, as the reason I mentioned above.
+  </p>
 
+  <div align="middle">
+    <table style="width=100%">
+      <tr>
+        <td>
+          <img src="images/nlevel_nsample.png" align="middle" width="600px"/>
+          <figcaption align="middle">Pic 1.Nearest level, nearest sample.</figcaption>
+        </td>
+        <td>
+          <img src="images/blevel_nsample.png" align="middle" width="600px"/>
+          <figcaption align="middle">Pic 2.Bilinear level, nearest sample.</figcaption>
+        </td>
+      </tr>
+      <br>
+      <tr>
+        <td>
+          <img src="images/nlevel_bsample.png" align="middle" width="600px"/>
+          <figcaption align="middle">Pic 3.Nearest level, blinear sample.</figcaption>
+        </td>
+        <td>
+          <img src="images/blevel_bsample.png" align="middle" width="600px"/>
+          <figcaption align="middle">Pic 4.Bilinear level, bilinear sample.</figcaption>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <p>
+    1. As the image is zoomed out, the dominating factor will be the leveling method
+  </p>
 
 
 <h2 align="middle">Section III: Art Competition</h2>

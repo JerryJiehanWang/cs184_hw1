@@ -9,26 +9,93 @@ namespace CGL {
 Color Texture::sample(const SampleParams &sp) {
   // Parts 5 and 6: Fill this in.
   // Should return a color sampled based on the psm and lsm parameters given
-  return Color();
+  if (sp.lsm == L_ZERO) {
+      if (sp.psm == P_NEAREST) {
+          return sample_nearest(sp.p_uv, 0);
+      } else if (sp.psm == P_LINEAR) {
+          return sample_bilinear(sp.p_uv, 0);
+      }
+  } else if (sp.lsm == L_NEAREST) {
+      int level = get_level(sp) + 0.5; //round the value to get the nearest level
+      if (sp.psm == P_NEAREST) {
+          return sample_nearest(sp.p_uv, 1);
+      } else if (sp.psm == P_LINEAR) {
+          return sample_bilinear(sp.p_uv, level);
+      }
+  } else if (sp.lsm == L_LINEAR) {
+      float level = get_level(sp);
+      int level1 = level;
+      int level2 = level + 1;
+      Color color1;
+      Color color2;
+      if (sp.psm == P_NEAREST) {
+          color1 = sample_nearest(sp.p_uv, level1);
+          color2 = sample_nearest(sp.p_uv, level2);
+      } else if (sp.psm == P_LINEAR) {
+          color1 = sample_bilinear(sp.p_uv, level1);
+          color2 = sample_bilinear(sp.p_uv, level2);
+      }
+      return Color(color1 * (level2 - level) + color2 * (level - level1));
+  }
+
 }
 
 float Texture::get_level(const SampleParams &sp) {
   // Optional helper function for Parts 5 and 6
-  return 0;
+  Vector2D x_diff = sp.p_dx_uv - sp.p_uv;
+  Vector2D y_diff = sp.p_dy_uv - sp.p_uv;
+  float L1 = sqrt(pow(x_diff[0] * width, 2) + pow(x_diff[1] * height, 2));
+  float L2 = sqrt(pow(y_diff[0] * width, 2) + pow(y_diff[1] * height, 2));
+  float level = log2f(max(L1, L2));
+  level = level < 0 ? 0 : level;
+  level = level > mipmap.size() - 1 ? mipmap.size() - 1 : level;
+  return level;
 }
 
 // Returns the nearest sample given a particular level and set of uv coords
 Color Texture::sample_nearest(Vector2D uv, int level) {
   // Optional helper function for Parts 5 and 6
   // Feel free to ignore or create your own
-  return Color();
+  size_t mipmap_width = mipmap[level].width;
+  size_t mipmap_height = mipmap[level].height;
+  int w = (uv[0] * mipmap_width + 0.5);
+  int h = (uv[1] * mipmap_height + 0.5);
+  return mipmap[level].get_texel(w, h);
+  //+ 0.5 because needed to be rounded to the nearest value
 }
 
 // Returns the bilinear sample given a particular level and set of uv coords
 Color Texture::sample_bilinear(Vector2D uv, int level) {
   // Optional helper function for Parts 5 and 6
   // Feel free to ignore or create your own
-  return Color();
+  //TODO
+  size_t mipmap_width = mipmap[level].width;
+  size_t mipmap_height = mipmap[level].height;
+  double u = uv[0] * mipmap_width;
+  double v = uv[1] * mipmap_height;
+  int w = (int) u;
+  int h = (int) v;
+  Color u01 = mipmap[level].get_texel(w, h + 1);
+  Color u11 = mipmap[level].get_texel(w + 1, h + 1);
+  Color u00 = mipmap[level].get_texel(w, h);
+  Color u10 = mipmap[level].get_texel(w + 1, h);
+
+  Color u0 = (1 - u + w) * u00 + (u - w) * u10;
+  Color u1 = (1 - u + w) * u01 + (u - w) * u11;
+  Color final = (1 - v + h) * u0 + (v - h) * u1;
+  return Color(final);
+}
+
+Color MipLevel::get_texel(int tx, int ty) {
+    int x = tx < 0 ? 0 : tx;
+    int y = ty < 0 ? 0 : ty;
+    x = x > width - 1 ? width - 1 : x;
+    y = y > height - 1 ? height - 1 : y;
+
+    float r =  texels[(y * width + x) * 3] * 1.0 / 255.0;
+    float g =  texels[(y * width + x) * 3 + 1] * 1.0 / 255.0;
+    float b =  texels[(y * width + x) * 3 + 2] * 1.0 / 255.0;
+    return Color(r, g, b);
 }
 
 

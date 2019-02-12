@@ -301,7 +301,10 @@ void DrawRend::redraw() {
       samplebuffer[i][j].clear();
 
   SVG &svg = *svgs[current_svg];
+
+  auto start_time = clock();
   svg.draw(this, ndc_to_screen*svg_to_ndc[current_svg]);
+  cout << "Total time to draw: " << clock() - start_time << endl;
 
   // draw canvas outline
   Vector2D a = ndc_to_screen*svg_to_ndc[current_svg]*(Vector2D(    0    ,     0    )); a.x--; a.y++;
@@ -501,17 +504,70 @@ void DrawRend::rasterize_triangle( float x0, float y0,
   //         rasterized points and lines, then start rasterizing triangles.
   //         Use something like this:
   //             samplebuffer[row][column].fill_pixel(color);
+
   // Part 2: Add supersampling.
   //         You need to write color to each sub-pixel by yourself,
   //         instead of using the fill_pixel() function.
   //         Hint: Use the fill_color() function like this:
   //             samplebuffer[row][column].fill_color(sub_row, sub_column, color);
   //         You also need to implement get_pixel_color() function to support supersampling.
+
+  // TODO: optimization
+  //#pragma omp parallel for
+  int maxX = ceil(max(x0, max(x1, x2)));
+  int maxY = ceil(max(y0, max(y1, y2)));
+  int minX = floor(min(x0, min(x1, x2)));
+  int minY = floor(min(y0, min(y1, y2)));
+
+  int sample_per_side = sqrt(sample_rate);
+  for (int sx = minX; sx < maxX; sx++) {
+      for (int sy = minY; sy < maxY; sy++) {
+          for (int x_offset = 0; x_offset < sample_per_side; x_offset++) {
+              for (int y_offset = 0; y_offset < sample_per_side; y_offset++) {
+                  float ssx = sx + (x_offset + 0.5) / sample_per_side;
+                  float ssy = sy + (y_offset + 0.5) / sample_per_side;
+                  // TODO: implement the edge case where the sample point is on the edge.
+                  if ((line(x0, y0, x1, y1, ssx, ssy) >= 0 && line(x1, y1, x2, y2, ssx, ssy) >= 0 &&
+                      line(x2, y2, x0, y0, ssx, ssy) >= 0) || (line(x0, y0, x2, y2, ssx, ssy) >= 0 &&
+                      line(x2, y2, x1, y1, ssx, ssy) >= 0 && line(x1, y1, x0, y0, ssx, ssy) >= 0)) {
+                      //compute Barycentric coordinates if tri is not null;
+                      if (tri != NULL) {
+                          Vector3D p_bary = barycentric(x0, y0, x1, y1, x2, y2, ssx, ssy);
+                          Vector3D p_dx_bary = barycentric(x0, y0, x1, y1, x2, y2, ssx + 1, ssy);
+                          Vector3D p_dy_bary = barycentric(x0, y0, x1, y1, x2, y2, ssx, ssy + 1);
+                          SampleParams sp = SampleParams();
+                          sp.psm = psm;
+                          sp.lsm = lsm;
+                          samplebuffer[sy][sx].fill_color(y_offset, x_offset,
+                                  tri -> color(p_bary, p_dx_bary, p_dy_bary, sp));
+                      } else {
+                          samplebuffer[sy][sx].fill_color(y_offset, x_offset, color);
+                      }
+                  }
+              }
+          }
+      }
+  }
   // Part 4: Add barycentric coordinates and use tri->color for shading when available.
   // Part 5: Fill in the SampleParams struct and pass it to the tri->color function.
   // Part 6: Pass in correct barycentric differentials to tri->color for mipmapping.
 
 
+}
+
+//return the Barycentric coordinates given the three vertices and sample point
+Vector3D DrawRend::barycentric(float x0, float y0, float x1, float y1, float x2, float y2, float sx, float sy) {
+  float alpha = line(x1, y1, x2, y2, sx, sy) / line(x1, y1, x2, y2, x0, y0);
+  float beta = line(x0, y0, x2, y2, sx, sy) / line(x0, y0, x2, y2, x1, y1);
+  float gama = line(x0, y0, x1, y1, sx, sy) / line(x0, y0, x1, y1, x2, y2);
+  return Vector3D(alpha, beta, gama);
+}
+
+//determine whether a sample point is inside the edge or not using line equation
+float DrawRend::line(float x0, float y0, float x1, float y1, float sx, float sy) {
+  float dX = x1 - x0;
+  float dY = y1 - y0;
+  return (- (sx -x0) * dY + (sy - y0) * dX);
 }
 
 

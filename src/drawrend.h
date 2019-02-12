@@ -62,6 +62,12 @@ class DrawRend : public Renderer {
                            float x2, float y2,
                            Color color, Triangle *tri = NULL );
 
+  //determine whether a sample point is inside the edge or not using line equation
+  float line(float x0, float y0, float x1, float y1, float sx, float sy);
+
+  //return the Barycentric coordinates given the three vertices and sample point
+  Vector3D barycentric(float x0, float y0, float x1, float y1, float x2, float y2, float sx, float sy);
+
 
 
 private:
@@ -103,7 +109,9 @@ private:
       PixelColorStorage &p = sub_pixels[i][j];
       // Part 1: Overwrite PixelColorStorage p using Color c.
       //         Pay attention to different data types.
-      return;
+      p[0] = c.r * 255;
+      p[1] = c.g * 255;
+      p[2] = c.b * 255;
     }
 
     void fill_pixel(Color c) {
@@ -113,7 +121,19 @@ private:
     }
 
     Color get_pixel_color() {
-      return Color(sub_pixels[0][0].data());
+      float num_samples = samples_per_side * samples_per_side;
+      Vector3D avg_color = Vector3D();
+      float r = 0;
+      float g = 0;
+      float b = 0;
+      for (int x = 0; x < samples_per_side; x++) {
+        for (int y = 0; y < samples_per_side; y++) {
+          r += sub_pixels[y][x][0] * 1.0 / 255.0;
+          g += sub_pixels[y][x][1] * 1.0 / 255.0;
+          b += sub_pixels[y][x][2] * 1.0 / 255.0;
+        }
+      }
+      return Color(r / num_samples, g / num_samples, b / num_samples);
       // Part 2: Implement get_pixel_color() for supersampling.
     }
     
