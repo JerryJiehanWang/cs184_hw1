@@ -193,6 +193,15 @@
     4. Get the texture pixel of the corresponding \((u, v)\) using one of the sampling methods mentioned before in the
     correct level mipmap.
   </p>
+  <p>
+    Notice that it is important to consider both the case when levels or uv coordinates are out of bounds (eg. negative
+    or exceed the max mipmap levels for leveling and exceed the width and height of the image for uv coordinates) Also,
+    it is critical to multiply the correct mipmap width and height, not the image's height when doing the sampling.
+    Also, there's a weired bug. When I get the float level by get_level function, say 2.3, I want get a level 2 and
+    level 3 for my leveling linear interpolation. I use the function floor() and ceil(), but the images it generates show
+    some black spots on some parts. However, when I use casting from float to int to truncate the value, it gives me the
+    correct image. It is worth it to look into the bug.
+  </p>
   <table>
     <tr>
       <th></th>
@@ -272,10 +281,6 @@
       </tr>
     </table>
   </div>
-
-  <p>
-    1. As the image is zoomed out, the dominating factor will be the leveling method
-  </p>
 
 
 <h2 align="middle">Section III: Art Competition</h2>
